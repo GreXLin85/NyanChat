@@ -17,14 +17,7 @@ function getRandomPass() {
 }
 const crypto = new Crypto(getRandomPass());
 
-var socket = io("http://localhost:3001", {
-  reconnect: true,
-  query: {
-    publicKey: crypto.publicKey,
-  },
-});
-
-let window, otherUsersPublicKey;
+let window, otherUsersPublicKey, socket;
 
 app.whenReady().then(() => {
   window = new BrowserWindow({
@@ -51,30 +44,40 @@ ipcMain.addListener("messageFromReact", (event, arg) => {
   window.webContents.send("messageFromMe", true, socket.id, arg);
 });
 
+ipcMain.addListener("socketIP", (event, arg) => {
+  socket = io(arg, {
+    query: {
+      publicKey: crypto.publicKey,
+    },
+  });
+  socket.on("connect", function () {
+    console.log("Connected!");
+    window.webContents.send("socketController", arg);
+  });
+  socket.on("disconnect", function () {
+    console.log("Disconnected!");
+  });
+  socket.on("connect_failed", function () {
+    window.webContents.send("socketError");
+  });
+  socket.on("keyBroadcast", (key) => {
+    otherUsersPublicKey = key;
+    socket.emit("keyBroadcastFromFirstUser", crypto.publicKey);
+  });
+
+  socket.on("keyBroadcastFromFirstUsersSocket", (key) => {
+    otherUsersPublicKey = key;
+  });
+
+  socket.on("messageFromSocket", (data) => {
+    console.log(data[0]);
+    window.webContents.send(
+      "newMessageFromServer",
+      false,
+      data[0],
+      crypto.decrypt(data[1]).plaintext
+    );
+  });
+});
+
 // socket io
-
-socket.on("connect", function (socket) {
-  console.log("Connected!");
-});
-socket.on("disconnect", function (socket) {
-  console.log("Disconnected!");
-});
-
-socket.on("keyBroadcast", (key) => {
-  otherUsersPublicKey = key;
-  socket.emit("keyBroadcastFromFirstUser", crypto.publicKey);
-});
-
-socket.on("keyBroadcastFromFirstUsersSocket", (key) => {
-  otherUsersPublicKey = key;
-});
-
-socket.on("messageFromSocket", (data) => {
-  console.log(data[0]);
-  window.webContents.send(
-    "newMessageFromServer",
-    false,
-    data[0],
-    crypto.decrypt(data[1]).plaintext
-  );
-});

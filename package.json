@@ -8,9 +8,11 @@
   "private": false,
   "dependencies": {
     "cryptico": "^1.0.2",
-    "electron": "^13.1.1",
     "socket.io": "^4.1.2",
     "socket.io-client": "^4.1.2"
+  },
+  "devDependencies": {
+    "electron": "^13.1.1"
   },
   "scripts": {
     "start-ui": "electron ui",
